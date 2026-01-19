@@ -4,7 +4,6 @@
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.datasets import load_iris
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 
 #Load dataset
@@ -80,8 +79,23 @@ rfe_selected_feature_names = [feature_names[count] for count in range(len(featur
 
 
 #MODEL 4: Using L1 Regularisation with Logistic Regression
+from sklearn.linear_model import LogisticRegression
+from sklearn.feature_selection import SelectFromModel
 
+#Train a logistic regression model with L1 penalty
+logreg = LogisticRegression(penalty='l1',solver='saga')
+logreg.fit(X,y)
 
+#Get feature importances (coefficients)
+logreg_importances = abs(logreg.coef_[0])
+
+#Create a Dataframe for better visualisation
+logreg_importances_df = pd.DataFrame({
+    'Feature':feature_names,
+    'Coefficient':logreg_importances
+}).sort_values(by='Coefficient',ascending=False)
+
+#print(logreg_importances_df)
 
 
 
