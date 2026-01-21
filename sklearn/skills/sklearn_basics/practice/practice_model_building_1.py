@@ -23,7 +23,7 @@ model.fit(X_train,y_train)
 
 
 #Predict on test data
-y_pred = model.predict(y_test)
+y_pred = model.predict(X_test)
 
 #Evaluate model performance
 mse = mean_squared_error(y_test,y_pred)
@@ -33,3 +33,4 @@ print("Intercept:",model.intercept_)
 print("Coefficients:",model.coef_)
 print("Mean Squared Error:",mse)
 print("R^2 score:",r2)
+print("y_prediction",y_pred)
