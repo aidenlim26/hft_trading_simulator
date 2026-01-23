@@ -34,3 +34,14 @@ print("Coefficients:",model.coef_)
 print("Mean Squared Error:",mse)
 print("R^2 score:",r2)
 print("y_prediction",y_pred)
+
+
+#Matplotlib comparison
+import matplotlib.pyplot as plt
+
+plt.scatter(y_test, y_pred, color='blue')
+plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', linewidth=2)
+plt.xlabel('Actual')
+plt.ylabel('Predicted')
+plt.title('Actual vs Predicted')
+plt.show()
