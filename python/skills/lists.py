@@ -3,4 +3,9 @@ max = numbers[0]
 for i in numbers:
     if i > max:
         max = i
-print(max)
+#print(max)
+
+# To split up words in a sentence into a list
+message = input(">")
+words = message.split(' ')
+print(words)
