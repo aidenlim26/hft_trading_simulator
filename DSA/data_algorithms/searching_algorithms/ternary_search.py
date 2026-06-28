@@ -1,5 +1,5 @@
 # Ternary Search
-# Inputs must be in ascending order
+# Inputs must be sorted in asecnding order
 
 array = [2,3,7,8,10,15,21,61,67,99]
 
