@@ -1,4 +1,3 @@
-"""
 ================================================================================
 PROJECT: ALGORITHMIC HIGH-FREQUENCY TRADING (HFT) SIMULATOR
 ================================================================================
@@ -55,4 +54,3 @@ Language: Python 3.x (Standard Library Only)
   formatting to yield clean, scannable terminal terminal dashboards.
 
 ================================================================================
-"""
