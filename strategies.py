@@ -1,4 +1,4 @@
-from hft_trading_simulator.models import Order
+from models import Order
 
 import dataclasses 
 from typing import Literal

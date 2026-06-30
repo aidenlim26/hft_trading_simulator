@@ -1,4 +1,4 @@
-from hft_trading_simulator.models import Order
+from models import Order
 
 class OrderBook:
     def __init__(self, symbol:str):

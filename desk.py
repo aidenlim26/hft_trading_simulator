@@ -1,8 +1,8 @@
 import asyncio
 import random
 
-from hft_trading_simulator.models import Order
-from hft_trading_simulator.strategies import MomentumBot, MeanReversionBot
+from models import Order
+from strategies import MomentumBot, MeanReversionBot
 
 class RealTimeRiskDesk:
     def __init__(self):

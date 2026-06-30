@@ -1,5 +1,5 @@
-from hft_trading_simulator.models import Order, Trader    # Importing module 
-from hft_trading_simulator.engine import OrderBook, MatchingEngine 
+from models import Order, Trader    # Importing module 
+from engine import OrderBook, MatchingEngine 
 
 # TESTING PLACING ORDERS
 #print("-" * 50) 
