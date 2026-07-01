@@ -27,23 +27,29 @@ class RealTimeRiskDesk:
     async def simulate_market_feed(self):
         print("📡[MARKET] Live data stream initialized...")
 
-        while self.is_running:
-            await asyncio.sleep(0.4)    # Pause program for 0.4 seconds to simulate market trade timings
-            symbol = random.choice(list(self.market_prices.keys()))
+        try:
+            while self.is_running:
+                await asyncio.sleep(0.4)    # Pause program for 0.4 seconds to simulate market trade timings
+                symbol = random.choice(list(self.market_prices.keys()))
 
-            # Shift price up or down by small percentage
-            pct_change = random.uniform(-0.02, 0.025)
-            prev_price = self.market_prices[symbol]
-            self.market_prices[symbol] = round(self.market_prices[symbol] * (1 + pct_change), 2)
-            new_price = self.market_prices[symbol]
+                # Shift price up or down by small percentage
+                pct_change = random.uniform(-0.02, 0.025)
+                prev_price = self.market_prices[symbol]
+                self.market_prices[symbol] = round(self.market_prices[symbol] * (1 + pct_change), 2)
+                new_price = self.market_prices[symbol]
 
-            print(f"📊[TICK] {symbol} adjusted to ${new_price:.2f}, from {prev_price}. Percentage change: {pct_change}")
+                print(f"📊[TICK] {symbol} adjusted to ${new_price:.2f}, from {prev_price}. Percentage change: {pct_change}")
 
-            for bot_id, bot in self.bots.items():       # .items() turns a dictionary into a paired tuples
-                generated_order = bot.on_market_update(symbol, new_price)       # function from strategies
+                for bot_id, bot in self.bots.items():       # .items() turns a dictionary into a paired tuples
+                    generated_order = bot.on_market_update(symbol, new_price)       # function from strategies
 
-                if generated_order:                    # Basically means if theres a value in the variable the loop will run
-                    self.risk_manager(generated_order)
+                    if generated_order:                    # Basically means if theres a value in the variable the loop will run
+                        self.risk_manager(generated_order)
+
+        except asyncio.CancelledError:
+            print(f"⚙️ [DEBUG] market_thread_task successfully caught CancelledError!")
+            pass
+    
     
     def risk_manager(self, order: Order):      # All inputs must conform with the class "Order"'s format
         print(f"🛑[RISK MANAGER] Intercepted ticket {order.order_id} from {order.bot_id}")
@@ -93,6 +99,36 @@ class RealTimeRiskDesk:
             print(f"✅[ORDER SETTLED] {bot.bot_id} sold {order.quantity} shares of {order.symbol} @ ${order.price:.2f}")
             print(f"💼[PORTFOLIO UPDATE] --> Balance: ${bot.cash:.2f} | Inventory: {bot.portfolio}")
 
+    def generate_final_summary(self):
+        print("=" * 85)
+        print(f"HFT TRADING SIMULATOR (20s) SUMMARY")
+        print("=" * 85)
+
+        print(f"{'Rank':<6}{'Bot Identifier':<18}{'Available Cash':<16}{'Inventory Valuation':<22}{'Net Asset Value (NAV)':<15}")
+        print("-" * 85)
+
+        leaderboard_data = []
+
+        for bot_id, bot, in self.bots.items():      # bot is referring to the actual object (e.g. MomentumBot)
+            inventory_value = 0.0
+            
+            for symbol, shares in bot.portfolio.items():
+                current_price = self.market_prices.get(symbol, 0.0)
+                inventory_value += shares * current_price
+
+            net_asset_value = bot.cash + inventory_value
+            leaderboard_data.append({
+                "bot_id": bot_id,
+                "cash": bot.cash,
+                "inventory_value": inventory_value,
+                "nav": net_asset_value
+            })
+
+        leaderboard_data.sort(key=lambda x: x["nav"], reverse=True)
+
+        for rank, data in enumerate(leaderboard_data, 1):
+            print(f" #{rank:<4}{data['bot_id']:<18}${data['cash']:<15,.2f}${data['inventory_value']:<21,.2f}${data['nav']:<15,.2f}")
+            print("=" * 85)
 
 async def main():
     desk = RealTimeRiskDesk()
@@ -107,7 +143,6 @@ async def main():
     #desk.register_bot(trend_runner)
 
     # REGISTER ALL 15 BOT STRATEGIES
-
     desk.register_bot(MomentumBot("BOT_01_MOM", initial_cash=10000.00))
     desk.register_bot(MeanReversionBot("BOT_02_REV", initial_cash=10000.00))
     desk.register_bot(BollingerBandsBot("BOT_03_BB", initial_cash=10000.00))
@@ -127,21 +162,24 @@ async def main():
 
     market_thread_task = asyncio.create_task(desk.simulate_market_feed())
 
-    await asyncio.sleep(20)     # Let the market simulation run for 20 seconds
+    await asyncio.sleep(20)     
     
-    await market_thread_task
-    print(f"🛑 [SYSTEM] Simulation time expired. Terminating market data feeds...")
+    print(f"\n🛑 [SYSTEM] Simulation time expired. Terminating market data feeds...")
 
+    desk.is_running = False
+    
     market_thread_task.cancel()
 
     try:
         await market_thread_task
-
     except asyncio.CancelledError:
         pass
 
     print(f"[SYSTEM] All background engine processing pipelines stopped successfully.")
 
-
+    desk.generate_final_summary()
+    
 if __name__ == "__main__":
     asyncio.run(main())
+
+
