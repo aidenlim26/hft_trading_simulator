@@ -2,7 +2,13 @@ import asyncio
 import random
 
 from models import Order
-from strategies import MomentumBot, MeanReversionBot
+
+from strategies import (
+    MomentumBot, MeanReversionBot, BollingerBandsBot, DonchianChannelBot,
+    ATRTrailingStopBot, RSICloseBot, MACDSignalBot, EMACrossoverBot,
+    StochasticOscillatorBot, VWAPReversionBot, AccumulationDistributionBot,
+    RSIBollingerComboBot, SupportResistanceBot, TimeInforceScalperBot, GridTraderBot
+)
 
 class RealTimeRiskDesk:
     def __init__(self):
@@ -59,6 +65,12 @@ class RealTimeRiskDesk:
                 return
             
             bot.cash -= total_cost
+
+            current_shares = bot.portfolio.get(order.symbol, 0.0)
+            old_avg = bot.entry_prices.get(order.symbol, 0.0)
+            new_avg = ((old_avg * current_shares) + (order.price * order.quantity)) / (current_shares + order.quantity)
+            bot.entry_prices[order.symbol] = round(new_avg, 2)      # Replaces the value in the directory of "old_avg"
+
             bot.portfolio[order.symbol] = bot.portfolio.get(order.symbol, 0) + order.quantity       # It's dictionary so they use the key to find and add up the new value
             print(f"✅[ORDER SETTLED] {bot.bot_id} bought {order.quantity} shares of {order.symbol} @ ${order.price:.2f} ")
             print(f"Updated Portfolio --> Balance: ${bot.cash:.2f} | Inventory: {bot.portfolio}")
@@ -74,6 +86,10 @@ class RealTimeRiskDesk:
             total_credit = order.price * order.quantity
             bot.cash += total_credit
             bot.portfolio[order.symbol] -= order.quantity
+
+            if bot.portfolio[order.symbol] == 0:
+                del bot.entry_prices[order.symbol]          # Remove past data to prevent stale limits
+
             print(f"✅[ORDER SETTLED] {bot.bot_id} sold {order.quantity} shares of {order.symbol} @ ${order.price:.2f}")
             print(f"💼[PORTFOLIO UPDATE] --> Balance: ${bot.cash:.2f} | Inventory: {bot.portfolio}")
 
@@ -82,20 +98,50 @@ async def main():
     desk = RealTimeRiskDesk()
 
     # Deploy two bots
-    trend_runner = MomentumBot("TREND_RUNNER", initial_cash=12000.00)
-    payton = MeanReversionBot("PEIDONG", initial_cash=15000.00)
+    #trend_runner = MomentumBot("TREND_RUNNER", initial_cash=12000.00)
+    #payton = MeanReversionBot("PEIDONG", initial_cash=15000.00)
 
-    payton.portfolio["TIML"] = 50
+    #payton.portfolio["TIML"] = 50
 
-    desk.register_bot(payton)
-    desk.register_bot(trend_runner)
+    #desk.register_bot(payton)
+    #desk.register_bot(trend_runner)
+
+    # REGISTER ALL 15 BOT STRATEGIES
+
+    desk.register_bot(MomentumBot("BOT_01_MOM", initial_cash=10000.00))
+    desk.register_bot(MeanReversionBot("BOT_02_REV", initial_cash=10000.00))
+    desk.register_bot(BollingerBandsBot("BOT_03_BB", initial_cash=10000.00))
+    desk.register_bot(DonchianChannelBot("BOT_04_DONCHIAN", initial_cash=10000.00))
+    desk.register_bot(ATRTrailingStopBot("BOT_05_ATR", initial_cash=10000.00))
+    desk.register_bot(RSICloseBot("BOT_06_RSI", initial_cash=10000.00))
+    desk.register_bot(MACDSignalBot("BOT_07_MACD", initial_cash=10000.00))
+    desk.register_bot(EMACrossoverBot("BOT_08_EMA", initial_cash=10000.00))
+    desk.register_bot(StochasticOscillatorBot("BOT_09_STOCH", initial_cash=10000.00))
+    desk.register_bot(VWAPReversionBot("BOT_10_VWAP", initial_cash=10000.00))
+    desk.register_bot(AccumulationDistributionBot("BOT_11_AD_FLOW", initial_cash=10000.00))
+    desk.register_bot(RSIBollingerComboBot("BOT_12_HYBRID", initial_cash=10000.00))
+    desk.register_bot(SupportResistanceBot("BOT_13_SUP_RES", initial_cash=10000.00))
+    desk.register_bot(TimeInforceScalperBot("BOT_14_SCALPER", initial_cash=10000.00))
+    desk.register_bot(GridTraderBot("BOT_15_GRID", initial_cash=10000.00))
+
 
     market_thread_task = asyncio.create_task(desk.simulate_market_feed())
 
-    await asyncio.sleep(12)     # Let the market simulation run for 12 seconds
+    await asyncio.sleep(20)     # Let the market simulation run for 20 seconds
     
     await market_thread_task
+    print(f"🛑 [SYSTEM] Simulation time expired. Terminating market data feeds...")
+
+    market_thread_task.cancel()
+
+    try:
+        await market_thread_task
+
+    except asyncio.CancelledError:
+        pass
+
     print(f"[SYSTEM] All background engine processing pipelines stopped successfully.")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
