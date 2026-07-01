@@ -43,7 +43,7 @@ class BaseBot:
         target_spend = self.cash * pct_allocation
         if target_spend < 100:  # Enforce minimum cash reserve
             return 0
-        return int(target_spend // price)
+        return int((self.cash * 0.25) / price)
     
     def on_market_update(self, symbol:str, new_price:float):        # Temporary placeholder, for future inheritance to use
         pass

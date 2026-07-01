@@ -3,6 +3,8 @@ import random
 
 from models import Order
 from engine import MatchingEngine
+from providers import YahooFinanceProvider, LocalFallbackProvider
+from tabulate import tabulate
 
 from strategies import (
     MomentumBot, MeanReversionBot, BollingerBandsBot, DonchianChannelBot,
@@ -11,19 +13,14 @@ from strategies import (
     RSIBollingerComboBot, SupportResistanceBot, TimeInforceScalperBot, GridTraderBot
 )
 
-
+SYMBOL = "AAPL"
 class RealTimeRiskDesk:
-    def __init__(self):
+    def __init__(self, data_provider):
         self.bots = {}
-        self.market_prices = {
-            "TIML" : 100.00,
-            "AAPL" : 150.00
-        }
+        self.market_prices = {"AAPL" : 150.00}
+        self.provider = data_provider
 
-        self.order_books = {
-            "TIML" : {"BUY" : [], "SELL" : []},
-            "AAPL" : {"BUY" : [], "SELL" : []}
-        }
+        self.order_books = {"AAPL": {"BUY": [], "SELL": []}}
 
         self.is_running = True
         self.start_time = None
@@ -37,44 +34,53 @@ class RealTimeRiskDesk:
         print("📡[MARKET] Live data stream initialized...")
         self.start_time = asyncio.get_event_loop().time()
 
+        historical_prices = self.provider.fetch_historical_prices()
+
+        if not historical_prices:
+            print(f"⚠️ [ERROR] Provider returned zero records. Terminating.")
+            return
+        
+        tick_index = 0
+        total_ticks = len(historical_prices)
+
         try:
-            while self.is_running:
-                await asyncio.sleep(0.05)    # Pause program for 0.05 seconds to simulate market trade timings
-                symbol = random.choice(list(self.market_prices.keys()))
+            while self.is_running and tick_index < total_ticks:
+                await asyncio.sleep(0.4)    # Pause program for 0.05 seconds to simulate market trade timings
 
-                # Shift price up or down by small percentage
-                pct_change = random.uniform(-0.005, 0.005)
-                prev_price = self.market_prices[symbol]
-                self.market_prices[symbol] = round(self.market_prices[symbol] * (1 + pct_change), 2)
-                new_price = self.market_prices[symbol]
+                symbol = "AAPL"
 
-                print(f"📊[TICK] {symbol} baseline noise update: ${new_price:.2f} (Change: {pct_change*100:+.3f}%)")
+                self.order_books[symbol]["BUY"] = []
+                self.order_books[symbol]["SELL"] = []
 
-                for bot_id, bot in self.bots.items():       # .items() turns a dictionary into paired tuples
-                    best_bid = self.get_best_bid(symbol)
-                    best_ask = self.get_best_ask(symbol)
-                    
-                    # Baseline fallback is the random tick price
-                    target_price = new_price
+                historical_price = historical_prices[tick_index]
 
-                    # ⚖️ Handle Best Bid & Best Ask using the Midpoint
-                    if best_bid and best_ask:
-                        target_price = (best_bid + best_ask) / 2
-                    elif best_bid:
-                        target_price = best_bid
-                    elif best_ask:
-                        target_price = best_ask
+                self.market_prices[symbol] = round((historical_price * 0.95) + (self.market_prices[symbol] * 0.2), 2)      # 80% real pricing vectors, 20% live matching price swings
+                live_price = self.market_prices[symbol]
 
-                    # 🎯 Fix: Pass the calculated target_price to the bot!
-                    generated_order = bot.on_market_update(symbol, target_price)       
+                print(f"📊 [TICK] {symbol} Historical: ${historical_price:.2f} -> Live Blended: ${self.market_prices[symbol]:.2f}")
 
-                    if generated_order:                    # If an order is returned, send it to the risk desk
+                # Midpoint mapping
+                best_bid = self.get_best_bid(symbol)
+                best_ask = self.get_best_ask(symbol)
+                
+                target_price = self.market_prices[symbol]
+                if best_bid and best_ask:
+                    target_price = (best_bid + best_ask) / 2
+                elif best_bid:
+                    target_price = best_bid
+                elif best_ask:
+                    target_price = best_ask
+
+                for bot_id, bot in self.bots.items():
+                    generated_order = bot.on_market_update(SYMBOL, target_price)
+                    if generated_order:
                         self.risk_manager(generated_order)
 
+                tick_index += 1
+
         except asyncio.CancelledError:
-            print(f"⚙️ [DEBUG] market_thread_task successfully caught CancelledError!")
             pass
-    
+
     
     def risk_manager(self, order: Order):      # All inputs must conform with the class "Order"'s format
         print(f"🛑[RISK MANAGER] Intercepted ticket {order.order_id} from {order.bot_id}")
@@ -255,38 +261,31 @@ class RealTimeRiskDesk:
 
     
     def generate_final_summary(self):
-        print("=" * 85)
-        print(f"HFT TRADING SIMULATOR SUMMARY")
-        print("=" * 85)
-
-        print(f"{'Rank':<6}{'Bot Identifier':<18}{'Available Cash':<16}{'Inventory Valuation':<22}{'Net Asset Value (NAV)':<15}")
-        print("-" * 85)
-
-        leaderboard_data = []
-
-        for bot_id, bot, in self.bots.items():      # bot is referring to the actual object (e.g. MomentumBot)
-            inventory_value = 0.0
+        print("\n" + "=" * 40)
+        print(f"  FINAL PERFORMANCE REPORT: {SYMBOL}")
+        print("=" * 40)
+        
+        report_data = []
+        for bot_id, bot in self.bots.items():
+            # Calculate key metrics
+            # Note: Ensure these dictionary keys match your bot's internal storage
+            inv_val = bot.portfolio.get(SYMBOL, 0.0) * bot.entry_prices.get(SYMBOL, 150.00)
+            nav = bot.cash + inv_val
+            roi = ((nav - 10000.00) / 10000.00) * 100
             
-            for symbol, shares in bot.portfolio.items():
-                entry_price = bot.entry_prices.get(symbol, 0.0)
-                inventory_value += shares * entry_price
+            report_data.append([bot_id, f"${bot.cash:,.2f}", f"${inv_val:,.2f}", f"${nav:,.2f}", f"{roi:+.2f}%"])
 
-            net_asset_value = bot.cash + inventory_value
-            leaderboard_data.append({
-                "bot_id": bot_id,
-                "cash": bot.cash,
-                "inventory_value": inventory_value,
-                "nav": net_asset_value
-            })
-
-        leaderboard_data.sort(key=lambda x: x["nav"], reverse=True)
-
-        for rank, data in enumerate(leaderboard_data, 1):
-            print(f" #{rank:<4}{data['bot_id']:<18}${data['cash']:<15,.2f}${data['inventory_value']:<21,.2f}${data['nav']:<15,.2f}")
-            print("=" * 85)
+        # Sort by Net Asset Value (NAV) descending to highlight the best performers
+        report_data.sort(key=lambda x: float(x[3].replace('$', '').replace(',', '')), reverse=True)
+        
+        # Render pretty table
+        headers = ["Strategy Bot", "Available Cash", "Inventory", "Total NAV", "ROI"]
+        print(tabulate(report_data, headers=headers, tablefmt="fancy_grid"))
+        print("\n")
 
 async def main():
-    desk = RealTimeRiskDesk()
+    chosen_provider = YahooFinanceProvider(ticker=SYMBOL, period="8d", interval="1m")
+    desk = RealTimeRiskDesk(data_provider = chosen_provider)
 
     # Deploy two bots
     #trend_runner = MomentumBot("TREND_RUNNER", initial_cash=12000.00)
@@ -317,7 +316,7 @@ async def main():
 
     market_thread_task = asyncio.create_task(desk.simulate_market_feed())
 
-    await asyncio.sleep(120)     
+    await asyncio.sleep(120)        # ADJUST SIMULATION RUN-TIME HERE
     
     print(f"\n🛑 [SYSTEM] Simulation time expired. Terminating market data feeds...")
 
