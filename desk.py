@@ -45,7 +45,7 @@ class RealTimeRiskDesk:
 
         try:
             while self.is_running and tick_index < total_ticks:
-                await asyncio.sleep(0.4)    # Pause program for 0.05 seconds to simulate market trade timings
+                await asyncio.sleep(0.05)    # Pause program for 0.05 seconds to simulate market trade timings
 
                 symbol = "AAPL"
 
@@ -298,20 +298,20 @@ async def main():
 
     # REGISTER ALL 15 BOT STRATEGIES
     desk.register_bot(MomentumBot("BOT_01_MOM", initial_cash=10000.00))
-    desk.register_bot(MeanReversionBot("BOT_02_REV", initial_cash=10000.00))
-    desk.register_bot(BollingerBandsBot("BOT_03_BB", initial_cash=10000.00))
-    desk.register_bot(DonchianChannelBot("BOT_04_DONCHIAN", initial_cash=10000.00))
+    #desk.register_bot(MeanReversionBot("BOT_02_REV", initial_cash=10000.00))
+    #desk.register_bot(BollingerBandsBot("BOT_03_BB", initial_cash=10000.00))
+    #desk.register_bot(DonchianChannelBot("BOT_04_DONCHIAN", initial_cash=10000.00))
     desk.register_bot(ATRTrailingStopBot("BOT_05_ATR", initial_cash=10000.00))
     desk.register_bot(RSICloseBot("BOT_06_RSI", initial_cash=10000.00))
-    desk.register_bot(MACDSignalBot("BOT_07_MACD", initial_cash=10000.00))
+    #desk.register_bot(MACDSignalBot("BOT_07_MACD", initial_cash=10000.00))
     desk.register_bot(EMACrossoverBot("BOT_08_EMA", initial_cash=10000.00))
     desk.register_bot(StochasticOscillatorBot("BOT_09_STOCH", initial_cash=10000.00))
-    desk.register_bot(VWAPReversionBot("BOT_10_VWAP", initial_cash=10000.00))
+    #desk.register_bot(VWAPReversionBot("BOT_10_VWAP", initial_cash=10000.00))
     desk.register_bot(AccumulationDistributionBot("BOT_11_AD_FLOW", initial_cash=10000.00))
-    desk.register_bot(RSIBollingerComboBot("BOT_12_HYBRID", initial_cash=10000.00))
-    desk.register_bot(SupportResistanceBot("BOT_13_SUP_RES", initial_cash=10000.00))
+    #desk.register_bot(RSIBollingerComboBot("BOT_12_HYBRID", initial_cash=10000.00))
+    #desk.register_bot(SupportResistanceBot("BOT_13_SUP_RES", initial_cash=10000.00))
     desk.register_bot(TimeInforceScalperBot("BOT_14_SCALPER", initial_cash=10000.00))
-    desk.register_bot(GridTraderBot("BOT_15_GRID", initial_cash=10000.00))
+    #desk.register_bot(GridTraderBot("BOT_15_GRID", initial_cash=10000.00))
 
 
     market_thread_task = asyncio.create_task(desk.simulate_market_feed())
